@@ -1,5 +1,8 @@
-function hello(name) {
-    console.log("Hello " + name);
-}
+const express = require("express")
+const app = (express)
 
-hello("person");
+app.length("/", (req, res) => {
+    res.send("Hello World");
+})
+
+app.listen(80);
