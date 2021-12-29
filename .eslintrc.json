@@ -1,8 +1,12 @@
 {
-	"root": true,
 	"env": {
-		"node": true
+		"node": true,
+		"commonjs": true,
+		"es2021": true
 	},
-	"extends": ["airbnb", "prettier"],
-	"rules": { "linebreak-style": 0, "no-await-in-loop": "error" }
+	"extends": ["airbnb-base", "prettier"],
+	"parserOptions": {
+		"ecmaVersion": "latest"
+	},
+	"rules": { "linebreak-style": 0 }
 }
