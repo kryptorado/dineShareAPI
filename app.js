@@ -6,7 +6,10 @@ if (process.env.NODE_ENV === 'development') {
 	app.use(morgan('dev'));
 }
 
-app.get('/', (req, res) => {
-	res.send('Hello World');
-});
-app.listen(80, console.log(`Server running on port 80`));
+// Route files
+const matching = require('./routes/matching');
+
+// Mount routers
+app.use('/api/v1/matching', matching);
+
+app.listen(8080, console.log(`Server running on port 8080`));
