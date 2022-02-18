@@ -1,10 +1,14 @@
 const express = require('express');
 const morgan = require('morgan');
+const errorHandler = require('./middleware/error');
 
 const app = express();
 if (process.env.NODE_ENV === 'development') {
 	app.use(morgan('dev'));
 }
+
+// Middleware
+app.use(errorHandler);
 
 // Route files
 const matching = require('./routes/matching');
