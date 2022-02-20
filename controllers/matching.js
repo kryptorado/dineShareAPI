@@ -26,7 +26,10 @@ currentMatches {
  */
 
 const AGORA_TOKEN_URL = (channelName) =>
-	`https://calm-castle-22371.herokuapp.com/rtc/${channelName}/publisher/uid/0}`;
+	`https://calm-castle-22371.herokuapp.com/rtc/${channelName}/publisher/uid/0`;
+
+// const AGORA_TOKEN_URL = (channelName) =>
+// 	`http://192.168.0.37:8080/rtc/${channelName}/publisher/uid/0}`;
 const MATCHING_SERVER_URL = 'https://dineshare-matching.herokuapp.com/match';
 const DEFAULT_NUM_INTERESTS = 5;
 
@@ -36,8 +39,8 @@ async function getAgoraToken(channelName) {
 		.catch((error) => {
 			console.log(error);
 		});
+	console.log('returned token is: ', response.data.rtcToken);
 	return response.data.rtcToken;
-	// return '00674ee7f95ddc4427e83d12f3c30ade740IACp+0aFvz+IvNJp2pBaIDb1tcIXnBoKwqjsVYA5uP9xeiRHbo2NKSuwIgCKo6/24PMPYgQAAQBwsA5iAgBwsA5iAwBwsA5iBABwsA5i';
 }
 
 exports.enterQueue = asyncHandler(async (req, res, next) => {
@@ -55,6 +58,7 @@ exports.enterQueue = asyncHandler(async (req, res, next) => {
 
 exports.pollQueue = asyncHandler(async (req, res, next) => {
 	const userId = req.params.uId;
+	console.log(userId + ' polling queue');
 
 	// First check if the user is already matched with anyone
 	// This could occur if one of the users called pollqueue earlier
