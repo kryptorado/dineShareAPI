@@ -25,13 +25,10 @@ currentMatches {
     }
  */
 
+const DEFAULT_NUM_INTERESTS = 5;
+const MATCHING_SERVER_URL = 'https://dineshare-matching.herokuapp.com/match';
 const AGORA_TOKEN_URL = (channelName) =>
 	`https://calm-castle-22371.herokuapp.com/rtc/${channelName}/publisher/uid/0`;
-
-// const AGORA_TOKEN_URL = (channelName) =>
-// 	`http://192.168.0.37:8080/rtc/${channelName}/publisher/uid/0}`;
-const MATCHING_SERVER_URL = 'https://dineshare-matching.herokuapp.com/match';
-const DEFAULT_NUM_INTERESTS = 5;
 
 async function getAgoraToken(channelName) {
 	const response = await axios
@@ -75,36 +72,34 @@ exports.pollQueue = asyncHandler(async (req, res, next) => {
 		if (numUsersToMatch <= 1) {
 			res.status(200).json(MatchStatus.NotEnoughUsers);
 		} else if (numUsersToMatch === 2) {
-			// match them immediately
 			const usersToMatch = [...usersInQueue]; // save user queue state because it could change anytime
-			usersInQueue = usersInQueue.filter(
-				(item) =>
-					// delete matched users from queue
-					usersToMatch.indexOf(item) === -1
-			);
-
 			const channelName = uuidv4(); // create channel name
 			const token = await getAgoraToken(channelName); // get Agora token
 
+			// delete matched users from queue
+			usersInQueue = usersInQueue.filter(
+				(user) => usersToMatch.indexOf(user) === -1
+			);
+
+			// add both users to the match list
 			for (var i = 0, j = 1; i < usersToMatch.length; i++, j--) {
 				const otherUser = usersToMatch[j].uId;
 
 				const matchInfo = {
-					// add both users to the match list
 					channelName,
 					token,
 					otherUser,
 				};
 				currentMatches[usersToMatch[i].uId] = matchInfo;
 			}
+			console.log('current matches (case: 2 users): ', currentMatches);
 
 			return res.status(200).json({
 				...currentMatches[userId],
 				...MatchStatus.FoundMatch,
 			});
 		} else if (numUsersToMatch >= 3) {
-			// hold queue data in format required by matching server
-			const formattedList = {};
+			const formattedList = {}; // queue data in format required by matching server
 
 			formattedList.num_interests = DEFAULT_NUM_INTERESTS;
 			usersInQueue.forEach((user) => {
@@ -131,12 +126,14 @@ exports.pollQueue = asyncHandler(async (req, res, next) => {
 						};
 						currentMatches[match[i]] = matchInfo;
 					}
+					console.log(
+						'current matches (case: more than 3 users): ',
+						currentMatches
+					);
 
-					// remove matched userIds from queue
+					// remove matched user from queue
 					usersInQueue = usersInQueue.filter(
-						(user) =>
-							// delete matched users from queue
-							matchedUserIds.indexOf(user.uId) === -1
+						(user) => matchedUserIds.indexOf(user.uId) === -1
 					);
 
 					// return matched or matching states to users
@@ -159,20 +156,49 @@ exports.pollQueue = asyncHandler(async (req, res, next) => {
 			}
 		} else {
 			console.log('something went wrong');
-			return res.status(500);
+			return res.status(500).json({
+				...MatchStatus.Error,
+			});
 		}
 	}
 });
 
 exports.doneCall = asyncHandler(async (req, res, next) => {
+	// TODO: remove requesting users from the queue as well in case they haven't already been removed
 	try {
 		delete currentMatches[req.params.uId];
+		console.log('Exit queue called by user ', req.params.uId);
 		console.log('current matches: ', currentMatches);
+
 		return res.status(204).json();
 	} catch (error) {
 		console.log(error);
 		return res.status(400).json({
 			...MatchStatus.Error,
 		});
+	}
+});
+
+// called when something unexpected happens and the user needs to get removed
+// from the matching process
+exports.cleanup = asyncHandler(async (req, res, next) => {
+	try {
+		// remove user from queue
+		usersInQueue = usersInQueue.filter(
+			// eslint-disable-next-line array-callback-return
+			(user) => user.uId !== req.params.uId
+		);
+		console.log('cleanup called. current queue after delete: ', usersInQueue);
+
+		delete currentMatches[req.params.uId];
+		console.log(
+			'cleanup called. current matches after delete: ',
+			currentMatches
+		);
+
+		return res.status(200).json();
+	} catch (err) {
+		console.log(err);
+		return res.status(500).json();
 	}
 });
