@@ -25,6 +25,7 @@ currentMatches {
     }
  */
 
+const MATCHING_INTERVAL = 5000; // how often users in queue get matched
 const DEFAULT_NUM_INTERESTS = 5;
 const MATCHING_SERVER_URL = 'https://dineshare-matching.herokuapp.com/match';
 const AGORA_TOKEN_URL = (channelName) =>
@@ -50,6 +51,45 @@ exports.enterQueue = asyncHandler(async (req, res, next) => {
 		console.log('current queue ', usersInQueue);
 	}
 	return res.status(201).json({});
+});
+
+exports.pollQueue = asyncHandler(async (req, res, next) => {
+	const userId = req.params.uId;
+
+	if (currentMatches[userId]) {
+		return res.status(200).json({
+			...currentMatches[userId],
+			...MatchStatus.FoundMatch,
+		});
+	}
+
+	if (usersInQueue.length <= 1) {
+		res.status(200).json({
+			...MatchStatus.NotEnoughUsers,
+		});
+	} else {
+		res.status(200).json({
+			...MatchStatus.Matching,
+		});
+	}
+});
+
+exports.doneCall = asyncHandler(async (req, res, next) => {
+	// TODO: remove requesting users from the queue as well in case they haven't already been removed
+	console.log('Done call called by android');
+	return res.status(204).json();
+});
+
+// called when something unexpected happens and the user needs to get removed
+// from the matching process
+exports.cleanup = asyncHandler(async (req, res, next) => {
+	// delete matched users from queue
+	// remove user from queue
+	usersInQueue = usersInQueue.filter(
+		// eslint-disable-next-line array-callback-return
+		(user) => user.uId !== req.params.uId
+	);
+	res.status(200).json();
 });
 
 async function makeMatches() {
@@ -93,46 +133,5 @@ async function makeMatches() {
 		}
 	}
 }
-
-setInterval(makeMatches, 5000);
-
-exports.pollQueue = asyncHandler(async (req, res, next) => {
-	const userId = req.params.uId;
-	// console.log(userId + ' polling queue');
-	// const numUsersToMatch = usersInQueue.length;
-
-	if (currentMatches[userId]) {
-		return res.status(200).json({
-			...currentMatches[userId],
-			...MatchStatus.FoundMatch,
-		});
-	}
-
-	if (usersInQueue.length <= 1) {
-		res.status(200).json({
-			...MatchStatus.NotEnoughUsers,
-		});
-	} else {
-		res.status(200).json({
-			...MatchStatus.Matching,
-		});
-	}
-});
-
-exports.doneCall = asyncHandler(async (req, res, next) => {
-	// TODO: remove requesting users from the queue as well in case they haven't already been removed
-	console.log('Done call called by android');
-	return res.status(204).json();
-});
-
-// called when something unexpected happens and the user needs to get removed
-// from the matching process
-exports.cleanup = asyncHandler(async (req, res, next) => {
-	// delete matched users from queue
-	// remove user from queue
-	usersInQueue = usersInQueue.filter(
-		// eslint-disable-next-line array-callback-return
-		(user) => user.uId !== req.params.uId
-	);
-	res.status(200).json();
-});
+// calls makeMatches every five seconds
+setInterval(makeMatches, MATCHING_INTERVAL);
